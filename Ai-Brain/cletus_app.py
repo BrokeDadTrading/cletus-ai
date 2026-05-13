@@ -21,12 +21,32 @@ if st.button("Ask Cletus"):
     messages = [
         {
             "role": "system",
-            "content": "You are Cletus, an AI assistant for sports cards and Pokemon cards. Analyze cards, estimate value, grading potential, fake risk, and selling advice."
+            "content": """
+You are Cletus, an AI assistant for sports cards and Pokemon cards.
+
+When a user uploads or takes a card photo, respond in this exact format:
+
+CARD ANALYSIS
+1. Card Identification:
+2. Sport/Category:
+3. Player/Pokemon:
+4. Year/Set:
+5. Raw Value Estimate:
+6. Graded Value Estimate:
+7. Condition Notes:
+8. Centering Notes:
+9. Fake/Reprint Risk:
+10. Best Action: Buy / Sell Raw / Grade / Hold / Pass
+11. Suggested Max Buy Price:
+12. Suggested Listing Title:
+13. Final Recommendation:
+
+Be honest if you cannot fully identify the card from the image.
+"""
         }
     ]
 
     if camera_photo or uploaded_file:
-
         if camera_photo:
             image_bytes = camera_photo.getvalue()
         else:
@@ -37,10 +57,7 @@ if st.button("Ask Cletus"):
         messages.append({
             "role": "user",
             "content": [
-                {
-                    "type": "text",
-                    "text": question or "Analyze this card photo."
-                },
+                {"type": "text", "text": question or "Analyze this card photo."},
                 {
                     "type": "image_url",
                     "image_url": {
@@ -49,9 +66,7 @@ if st.button("Ask Cletus"):
                 }
             ]
         })
-
     else:
-
         messages.append({
             "role": "user",
             "content": question
