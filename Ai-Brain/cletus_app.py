@@ -364,3 +364,83 @@ else:
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
         save_scan(mode, user_text, answer)
+       else:
+    use_camera = st.toggle("Use Camera", value=False)
+
+    camera_photo = None
+
+    if use_camera:
+        camera_photo = st.camera_input("Take a photo of your card")
+
+    uploaded_file = st.file_uploader(
+        "Or upload a card photo",
+        type=["jpg", "jpeg", "png"]
+    )
+
+    image_file = camera_photo if camera_photo else uploaded_file
+
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+    question = st.chat_input("Ask Cletus...")
+
+    if question or image_file:
+        user_text = question or "Analyze this card photo."
+
+        st.session_state.messages.append({
+            "role": "user",
+            "content": user_text
+        })
+
+        with st.chat_message("user"):
+            st.write(user_text)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Cletus is thinking..."):
+                answer = ask_cletus(mode, user_text, image_file)
+                st.write(answer)
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": answer
+        })
+
+        save_scan(mode, user_text, answer)
+
+        if mode == "Analyze Card":
+            task_prompt = f"""
+Based on this card analysis, create 3 short actionable business tasks.
+
+Analysis:
+{answer}
+
+Examples:
+- Grade this card
+- Research comps
+- Create listing
+- Monitor player market
+- Hold for offseason
+
+Return ONLY short task titles.
+"""
+
+            task_response = ask_cletus("Task Manager", task_prompt)
+
+            st.write("### Auto Generated Tasks")
+            st.write(task_response)
+
+            task_lines = task_response.split("\n")
+
+            for task in task_lines:
+                cleaned = task.strip("- ").strip()
+
+                if len(cleaned) > 3:
+                    save_task(
+                        cleaned,
+                        "Medium",
+                        "Pending",
+                        "Auto-generated from card analysis"
+                    )
+
+            st.success("Tasks automatically added to Task Manager.") 
