@@ -8,9 +8,16 @@ st.title("Cletus - Broke Dad Trading Co.")
 st.write("Sports Card AI Assistant")
 
 question = st.text_input("Ask Cletus")
-uploaded_file = st.camera_input("Take a photo of your card")
+
+camera_photo = st.camera_input("Take a photo of your card")
+
+uploaded_file = st.file_uploader(
+    "Or upload a card photo",
+    type=["jpg", "jpeg", "png"]
+)
 
 if st.button("Ask Cletus"):
+
     messages = [
         {
             "role": "system",
@@ -18,14 +25,22 @@ if st.button("Ask Cletus"):
         }
     ]
 
-    if uploaded_file:
-        image_bytes = uploaded_file.getvalue()
+    if camera_photo or uploaded_file:
+
+        if camera_photo:
+            image_bytes = camera_photo.getvalue()
+        else:
+            image_bytes = uploaded_file.getvalue()
+
         image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
         messages.append({
             "role": "user",
             "content": [
-                {"type": "text", "text": question or "Analyze this card photo."},
+                {
+                    "type": "text",
+                    "text": question or "Analyze this card photo."
+                },
                 {
                     "type": "image_url",
                     "image_url": {
@@ -34,7 +49,9 @@ if st.button("Ask Cletus"):
                 }
             ]
         })
+
     else:
+
         messages.append({
             "role": "user",
             "content": question
