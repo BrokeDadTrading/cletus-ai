@@ -12,15 +12,10 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 os.makedirs("Inventory", exist_ok=True)
 
 TASKS_FILE = "Inventory/tasks.csv"
-
 SCAN_HISTORY_FILE = "Inventory/scan_history.csv"
 INVENTORY_FILE = "Inventory/cards_inventory.csv"
 
-st.set_page_config(
-    page_title="Cletus AI",
-    page_icon="🤖",
-    layout="wide"
-)
+st.set_page_config(page_title="Cletus AI", page_icon="🤖", layout="wide")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -29,26 +24,38 @@ if "growth_goal" not in st.session_state:
     st.session_state.growth_goal = "Build Broke Dad Trading Co. into a profitable sports card business."
 
 
-def save_inventory(card_name, category, purchase_price, estimated_value, action, notes):
-
-    file_exists = os.path.exists(INVENTORY_FILE)
-
-    with open(INVENTORY_FILE, "a", newline="", encoding="utf-8") as file:
-
+def save_scan(mode, question, answer):
+    with open(SCAN_HISTORY_FILE, "a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
+        writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), mode, question, answer])
 
+
+def save_task(task, priority, status, notes):
+    file_exists = os.path.exists(TASKS_FILE)
+    with open(TASKS_FILE, "a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
         if not file_exists:
+            writer.writerow(["Date", "Task", "Priority", "Status", "Notes"])
+        writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), task, priority, status, notes])
 
-            writer.writerow([
-                "Date",
-                "Card Name",
-                "Category",
-                "Purchase Price",
-                "Estimated Value",
-                "Best Action",
-                "Notes"
-            ])
 
+def load_tasks():
+    tasks = []
+    if os.path.exists(TASKS_FILE):
+        with open(TASKS_FILE, "r", encoding="utf-8") as file:
+            reader = csv.reader(file)
+            next(reader, None)
+            for row in reader:
+                tasks.append(row)
+    return tasks
+
+
+def save_inventory(card_name, category, purchase_price, estimated_value, action, notes):
+    file_exists = os.path.exists(INVENTORY_FILE)
+    with open(INVENTORY_FILE, "a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        if not file_exists:
+            writer.writerow(["Date", "Card Name", "Category", "Purchase Price", "Estimated Value", "Best Action", "Notes"])
         writer.writerow([
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             card_name,
@@ -61,95 +68,38 @@ def save_inventory(card_name, category, purchase_price, estimated_value, action,
 
 
 def load_inventory():
-
     inventory = []
-
     if os.path.exists(INVENTORY_FILE):
-
         with open(INVENTORY_FILE, "r", encoding="utf-8") as file:
-
             reader = csv.reader(file)
-
             next(reader, None)
-
             for row in reader:
                 inventory.append(row)
-
     return inventory
-def save_scan(mode, question, answer):
-    with open(SCAN_HISTORY_FILE, "a", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-        writer.writerow([
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            mode,
-            question,
-            answer
-        ])
-
-def save_task(task, priority, status, notes):
-
-    with open(TASKS_FILE, "a", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-
-        writer.writerow([
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            task,
-            priority,
-            status,
-            notes
-        ])
-
-def load_tasks():
-
-    tasks = []
-
-    if os.path.exists(TASKS_FILE):
-
-        with open(TASKS_FILE, "r", encoding="utf-8") as file:
-            reader = csv.reader(file)
-
-            next(reader, None)
-
-            for row in reader:
-                tasks.append(row)
-
-    return tasks
 
 
 def optimize_image(file):
     image = Image.open(file)
     old_w, old_h = image.size
-
-    max_size = (1024, 1024)
-    image.thumbnail(max_size)
+    image.thumbnail((1024, 1024))
 
     buffer = io.BytesIO()
     image.save(buffer, format="JPEG", quality=70)
 
     return buffer.getvalue(), old_w, old_h, image.size[0], image.size[1]
 
+
 def ask_cletus(mode, question, image_file=None):
     system_prompt = f"""
 You are Cletus, the AI growth assistant for Broke Dad Trading Co.
 
-Personality:
-- Helpful
-- Honest
-- Business-minded
-- Direct
-- Motivational
-- Always focused on helping the user grow safely and profitably
-
-Your mission:
-Help the user build a profitable sports card and Pokemon card business.
+You help build a profitable sports card and Pokemon card business.
 
 Current user goal:
 {st.session_state.growth_goal}
 
 Current mode:
 {mode}
-
-Cletus should act like a growing business assistant, not just a chatbot.
 
 When analyzing cards, use this format:
 
@@ -167,25 +117,15 @@ CARD ANALYSIS
 11. Suggested Max Buy Price:
 12. Suggested Listing Title:
 13. Final Recommendation:
-
-When giving business advice, include:
-- Immediate next step
-- Risk
-- Income potential
-- What Cletus would do next
 """
 
     messages = [{"role": "system", "content": system_prompt}]
 
     for msg in st.session_state.messages[-8:]:
-        messages.append({
-            "role": msg["role"],
-            "content": msg["content"]
-        })
+        messages.append({"role": msg["role"], "content": msg["content"]})
 
     if image_file:
         image_bytes, old_w, old_h, new_w, new_h = optimize_image(image_file)
-
         st.info(f"Original image: {old_w} x {old_h}")
         st.info(f"Optimized image: {new_w} x {new_h}")
 
@@ -195,12 +135,7 @@ When giving business advice, include:
             "role": "user",
             "content": [
                 {"type": "text", "text": question or "Analyze this card photo."},
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_base64}"
-                    }
-                }
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
             ]
         })
     else:
@@ -212,6 +147,7 @@ When giving business advice, include:
     )
 
     return response.choices[0].message.content
+
 
 st.title("🤖 Cletus AI")
 st.caption("Broke Dad Trading Co. Sports Card Growth Assistant")
@@ -225,6 +161,7 @@ with st.sidebar:
             "General Chat",
             "Analyze Card",
             "Task Manager",
+            "Inventory Dashboard",
             "Grade Check",
             "Profit Calculator",
             "Listing Writer",
@@ -232,8 +169,6 @@ with st.sidebar:
             "Deal Finder",
             "Manager Review",
             "Business Growth"
-            "Inventory Dashboard",
-            "Inventory Assistant",
         ]
     )
 
@@ -246,6 +181,40 @@ with st.sidebar:
     if st.button("Clear Chat"):
         st.session_state.messages = []
         st.rerun()
+
+
+st.subheader("What are we working on today?")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    if st.button("📸 Analyze a Card"):
+        mode = "Analyze Card"
+
+with col2:
+    if st.button("💰 Check Profit"):
+        mode = "Profit Calculator"
+
+with col3:
+    if st.button("🚀 Grow Business"):
+        mode = "Business Growth"
+
+st.divider()
+
+
+if mode == "Task Manager":
+    st.header("📋 Cletus Task Manager")
+
+    task = st.text_input("Task")
+    priority = st.selectbox("Priority", ["Low", "Medium", "High", "Critical"])
+    status = st.selectbox("Status", ["Pending", "In Progress", "Completed"])
+    notes = st.text_area("Notes")
+
+    if st.button("Save Task"):
+        save_task(task, priority, status, notes)
+        st.success("Task saved.")
+
+    st.divider()
 
     if st.button("Generate Today's Mission"):
         mission_prompt = """
@@ -262,9 +231,7 @@ Focus on:
 
 Return 5 clear tasks with priority levels.
 """
-
         mission = ask_cletus("Task Manager", mission_prompt)
-
         st.write("### Today's Cletus Mission")
         st.write(mission)
 
@@ -274,56 +241,9 @@ Return 5 clear tasks with priority levels.
         st.success("Today's mission saved to tasks.")
 
     st.divider()
-
-st.subheader("What are we working on today?")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("📸 Analyze a Card"):
-        mode = "Analyze Card"
-        st.session_state.messages.append({
-            "role": "user",
-            "content": "Help me analyze a card photo and decide whether to grade, sell, hold, or pass."
-        })
-
-with col2:
-    if st.button("💰 Check Profit"):
-        mode = "Profit Calculator"
-        st.session_state.messages.append({
-            "role": "user",
-            "content": "Help me calculate profit and ROI on a card deal."
-        })
-
-with col3:
-    if st.button("🚀 Grow Business"):
-        mode = "Business Growth"
-        st.session_state.messages.append({
-            "role": "user",
-            "content": "Give me the next best move to grow Broke Dad Trading Co."
-        })
-
-st.divider()
-
-if mode == "Task Manager":
-
-    st.header("📋 Cletus Task Manager")
-
-    task = st.text_input("Task")
-    priority = st.selectbox("Priority", ["Low", "Medium", "High", "Critical"])
-    status = st.selectbox("Status", ["Pending", "In Progress", "Completed"])
-    notes = st.text_area("Notes")
-
-    if st.button("Save Task"):
-        save_task(task, priority, status, notes)
-        st.success("Task saved.")
-
-    st.divider()
     st.subheader("Current Tasks")
 
-    tasks = load_tasks()
-
-    for row in tasks:
+    for row in load_tasks():
         if len(row) >= 5:
             st.write(f"""
 **Task:** {row[1]}  
@@ -334,56 +254,58 @@ if mode == "Task Manager":
 """)
 
 
-def save_inventory(card_name, category, purchase_price, estimated_value, action, notes):
+elif mode == "Inventory Dashboard":
+    st.header("📊 Inventory Dashboard")
 
-    file_exists = os.path.exists(INVENTORY_FILE)
+    card_name = st.text_input("Card Name")
+    category = st.selectbox("Category", ["Sports", "Pokemon", "Other"])
+    purchase_price = st.number_input("Purchase Price", min_value=0.0, step=1.0)
+    estimated_value = st.number_input("Estimated Value", min_value=0.0, step=1.0)
+    action = st.selectbox("Best Action", ["Hold", "Sell Raw", "Grade", "Pass"])
+    notes = st.text_area("Notes")
 
-    with open(INVENTORY_FILE, "a", newline="", encoding="utf-8") as file:
+    if st.button("Save Card"):
+        save_inventory(card_name, category, purchase_price, estimated_value, action, notes)
+        st.success("Card saved to inventory.")
 
-        writer = csv.writer(file)
+    st.divider()
 
-        if not file_exists:
+    inventory = load_inventory()
 
-            writer.writerow([
-                "Date",
-                "Card Name",
-                "Category",
-                "Purchase Price",
-                "Estimated Value",
-                "Best Action",
-                "Notes"
-            ])
+    total_cost = 0
+    total_value = 0
 
-        writer.writerow([
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            card_name,
-            category,
-            purchase_price,
-            estimated_value,
-            action,
-            notes
-        ])
+    for row in inventory:
+        if len(row) >= 5:
+            try:
+                total_cost += float(row[3])
+                total_value += float(row[4])
+            except:
+                pass
+
+    estimated_profit = total_value - total_cost
 
 
-def load_inventory():
+    st.metric("Total Cost", f"${total_cost:.2f}")
+    st.metric("Estimated Value", f"${total_value:.2f}")
+    estimated_profit = total_value - total_cost
+    st.metric("Estimated Profit", f"${estimated_profit:.2f}")
 
-    inventory = []
+    st.subheader("Cards In Inventory")
 
-    if os.path.exists(INVENTORY_FILE):
-
-        with open(INVENTORY_FILE, "r", encoding="utf-8") as file:
-
-            reader = csv.reader(file)
-
-            next(reader, None)
-
-            for row in reader:
-                inventory.append(row)
-
-    return inventory
+    for row in inventory:
+        if len(row) >= 7:
+            st.write(f"""
+**Card:** {row[1]}  
+**Category:** {row[2]}  
+**Cost:** ${row[3]}  
+**Estimated Value:** ${row[4]}  
+**Action:** {row[5]}  
+**Notes:** {row[6]}  
+---
+""")
 
 elif mode == "Profit Calculator":
-
     st.header("💰 Profit Calculator")
 
     sale_price = st.number_input("Sale Price", min_value=0.0, step=1.0)
@@ -402,13 +324,11 @@ ROI: {roi:.1f}%
 Cletus Recommendation:
 {"This looks profitable." if profit > 0 else "This does not look profitable."}
 """
-
         st.success(result)
-        st.session_state.messages.append({"role": "assistant", "content": result})
         save_scan(mode, "Profit calculation", result)
 
-else:
 
+else:
     use_camera = st.toggle("Use Camera", value=False)
 
     camera_photo = None
@@ -432,10 +352,7 @@ else:
     if question or image_file:
         user_text = question or "Analyze this card photo."
 
-        st.session_state.messages.append({
-            "role": "user",
-            "content": user_text
-        })
+        st.session_state.messages.append({"role": "user", "content": user_text})
 
         with st.chat_message("user"):
             st.write(user_text)
@@ -445,10 +362,5 @@ else:
                 answer = ask_cletus(mode, user_text, image_file)
                 st.write(answer)
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": answer
-        })
-
+        st.session_state.messages.append({"role": "assistant", "content": answer})
         save_scan(mode, user_text, answer)
-        
