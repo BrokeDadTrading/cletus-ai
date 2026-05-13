@@ -373,9 +373,11 @@ if use_camera:
             camera_photo = st.camera_input("Take a photo of your card")
 
 uploaded_file = st.file_uploader(
-            "Or upload a card photo",
-            type=["jpg", "jpeg", "png"]
-        )
+    "Or upload a card photo",
+    type=["jpg", "jpeg", "png"],
+    key="main_file_uploader"
+)
+        
 
 image_file = camera_photo if camera_photo else uploaded_file
 
