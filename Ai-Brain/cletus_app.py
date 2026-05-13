@@ -364,83 +364,83 @@ else:
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
         save_scan(mode, user_text, answer)
-       else:
-    use_camera = st.toggle("Use Camera", value=False)
 
-    camera_photo = None
+use_camera = st.toggle("Use Camera", value=False)
 
-    if use_camera:
-        camera_photo = st.camera_input("Take a photo of your card")
+camera_photo = None
 
-    uploaded_file = st.file_uploader(
-        "Or upload a card photo",
-        type=["jpg", "jpeg", "png"]
-    )
+if use_camera:
+            camera_photo = st.camera_input("Take a photo of your card")
 
-    image_file = camera_photo if camera_photo else uploaded_file
+uploaded_file = st.file_uploader(
+            "Or upload a card photo",
+            type=["jpg", "jpeg", "png"]
+        )
 
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
+image_file = camera_photo if camera_photo else uploaded_file
 
-    question = st.chat_input("Ask Cletus...")
+for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.write(msg["content"])
 
-    if question or image_file:
-        user_text = question or "Analyze this card photo."
+question = st.chat_input("Ask Cletus...")
 
-        st.session_state.messages.append({
-            "role": "user",
-            "content": user_text
-        })
+if question or image_file:
+            user_text = question or "Analyze this card photo."
 
-        with st.chat_message("user"):
-            st.write(user_text)
+            st.session_state.messages.append({
+                "role": "user",
+                "content": user_text
+            })
 
-        with st.chat_message("assistant"):
-            with st.spinner("Cletus is thinking..."):
-                answer = ask_cletus(mode, user_text, image_file)
-                st.write(answer)
+            with st.chat_message("user"):
+                st.write(user_text)
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": answer
-        })
+            with st.chat_message("assistant"):
+                with st.spinner("Cletus is thinking..."):
+                    answer = ask_cletus(mode, user_text, image_file)
+                    st.write(answer)
 
-        save_scan(mode, user_text, answer)
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": answer
+            })
 
-        if mode == "Analyze Card":
-            task_prompt = f"""
-Based on this card analysis, create 3 short actionable business tasks.
+            save_scan(mode, user_text, answer)
 
-Analysis:
-{answer}
+            if mode == "Analyze Card":
+                task_prompt = f"""
+    Based on this card analysis, create 3 short actionable business tasks.
 
-Examples:
-- Grade this card
-- Research comps
-- Create listing
-- Monitor player market
-- Hold for offseason
+    Analysis:
+    {answer}
 
-Return ONLY short task titles.
-"""
+    Examples:
+    - Grade this card
+    - Research comps
+    - Create listing
+    - Monitor player market
+    - Hold for offseason
 
-            task_response = ask_cletus("Task Manager", task_prompt)
+    Return ONLY short task titles.
+    """
 
-            st.write("### Auto Generated Tasks")
-            st.write(task_response)
+                task_response = ask_cletus("Task Manager", task_prompt)
 
-            task_lines = task_response.split("\n")
+                st.write("### Auto Generated Tasks")
+                st.write(task_response)
 
-            for task in task_lines:
-                cleaned = task.strip("- ").strip()
+                task_lines = task_response.split("\n")
 
-                if len(cleaned) > 3:
-                    save_task(
-                        cleaned,
-                        "Medium",
-                        "Pending",
-                        "Auto-generated from card analysis"
-                    )
+                for task in task_lines:
+                    cleaned = task.strip("- ").strip()
 
-            st.success("Tasks automatically added to Task Manager.") 
+                    if len(cleaned) > 3:
+                        save_task(
+                            cleaned,
+                            "Medium",
+                            "Pending",
+                            "Auto-generated from card analysis"
+                        )
+
+                st.success("Tasks automatically added to Task Manager.") 
