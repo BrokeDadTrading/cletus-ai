@@ -28,6 +28,54 @@ if "messages" not in st.session_state:
 if "growth_goal" not in st.session_state:
     st.session_state.growth_goal = "Build Broke Dad Trading Co. into a profitable sports card business."
 
+
+def save_inventory(card_name, category, purchase_price, estimated_value, action, notes):
+
+    file_exists = os.path.exists(INVENTORY_FILE)
+
+    with open(INVENTORY_FILE, "a", newline="", encoding="utf-8") as file:
+
+        writer = csv.writer(file)
+
+        if not file_exists:
+
+            writer.writerow([
+                "Date",
+                "Card Name",
+                "Category",
+                "Purchase Price",
+                "Estimated Value",
+                "Best Action",
+                "Notes"
+            ])
+
+        writer.writerow([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            card_name,
+            category,
+            purchase_price,
+            estimated_value,
+            action,
+            notes
+        ])
+
+
+def load_inventory():
+
+    inventory = []
+
+    if os.path.exists(INVENTORY_FILE):
+
+        with open(INVENTORY_FILE, "r", encoding="utf-8") as file:
+
+            reader = csv.reader(file)
+
+            next(reader, None)
+
+            for row in reader:
+                inventory.append(row)
+
+    return inventory
 def save_scan(mode, question, answer):
     with open(SCAN_HISTORY_FILE, "a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
@@ -184,6 +232,8 @@ with st.sidebar:
             "Deal Finder",
             "Manager Review",
             "Business Growth"
+            "Inventory Dashboard",
+            "Inventory Assistant",
         ]
     )
 
@@ -283,6 +333,54 @@ if mode == "Task Manager":
 ---
 """)
 
+
+def save_inventory(card_name, category, purchase_price, estimated_value, action, notes):
+
+    file_exists = os.path.exists(INVENTORY_FILE)
+
+    with open(INVENTORY_FILE, "a", newline="", encoding="utf-8") as file:
+
+        writer = csv.writer(file)
+
+        if not file_exists:
+
+            writer.writerow([
+                "Date",
+                "Card Name",
+                "Category",
+                "Purchase Price",
+                "Estimated Value",
+                "Best Action",
+                "Notes"
+            ])
+
+        writer.writerow([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            card_name,
+            category,
+            purchase_price,
+            estimated_value,
+            action,
+            notes
+        ])
+
+
+def load_inventory():
+
+    inventory = []
+
+    if os.path.exists(INVENTORY_FILE):
+
+        with open(INVENTORY_FILE, "r", encoding="utf-8") as file:
+
+            reader = csv.reader(file)
+
+            next(reader, None)
+
+            for row in reader:
+                inventory.append(row)
+
+    return inventory
 elif mode == "Profit Calculator":
     st.header("💰 Profit Calculator")
 
@@ -351,45 +449,4 @@ else:
         })
 
         save_scan(mode, user_text, answer)
-                if mode == "Analyze Card":
-
-            task_prompt = f"""
-Based on this card analysis, create 3 short actionable business tasks.
-
-Analysis:
-{answer}
-
-Examples:
-- Grade this card
-- Research comps
-- Create listing
-- Monitor player market
-- Hold for offseason
-
-Return ONLY short task titles.
-"""
-
-            task_response = ask_cletus(
-                "Task Manager",
-                task_prompt
-            )
-
-            st.write("### Auto Generated Tasks")
-            st.write(task_response)
-
-            task_lines = task_response.split("\n")
-
-            for task in task_lines:
-
-                cleaned = task.strip("- ").strip()
-
-                if len(cleaned) > 3:
-
-                    save_task(
-                        cleaned,
-                        "Medium",
-                        "Pending",
-                        "Auto-generated from card analysis"
-                    )
-
-            st.success("Tasks automatically added to Task Manager.")
+        
