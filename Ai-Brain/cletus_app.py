@@ -3,6 +3,8 @@ from openai import OpenAI
 import base64
 from datetime import datetime
 import csv
+from PIL import Image
+import io
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -16,9 +18,6 @@ def save_scan(question, answer):
             question,
             answer
         ])
-
-
-
 
 st.title("Cletus - Broke Dad Trading Co.")
 st.write("Sports Card AI Assistant")
@@ -69,9 +68,22 @@ Be honest if you cannot fully identify the card from the image.
 
     if camera_photo or uploaded_file:
         if camera_photo:
-            image_bytes = camera_photo.getvalue()
+            image = Image.open(camera_photo)
         else:
-            image_bytes = uploaded_file.getvalue()
+            image = Image.open(uploaded_file)
+
+        width, height = image.size
+        st.info(f"Original image resolution: {width} x {height} pixels")
+
+        max_size = (1024, 1024)
+        image.thumbnail(max_size)
+
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=70)
+        image_bytes = buffer.getvalue()
+
+        new_width, new_height = image.size
+        st.info(f"Optimized image resolution: {new_width} x {new_height} pixels")
 
         image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
@@ -102,5 +114,6 @@ Be honest if you cannot fully identify the card from the image.
 
     st.write("### Cletus Says:")
     st.write(answer)
+
     save_scan(question, answer)
-st.success("Scan saved to Cletus history.")
+    st.success("Scan saved to Cletus history.")
