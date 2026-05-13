@@ -351,3 +351,45 @@ else:
         })
 
         save_scan(mode, user_text, answer)
+                if mode == "Analyze Card":
+
+            task_prompt = f"""
+Based on this card analysis, create 3 short actionable business tasks.
+
+Analysis:
+{answer}
+
+Examples:
+- Grade this card
+- Research comps
+- Create listing
+- Monitor player market
+- Hold for offseason
+
+Return ONLY short task titles.
+"""
+
+            task_response = ask_cletus(
+                "Task Manager",
+                task_prompt
+            )
+
+            st.write("### Auto Generated Tasks")
+            st.write(task_response)
+
+            task_lines = task_response.split("\n")
+
+            for task in task_lines:
+
+                cleaned = task.strip("- ").strip()
+
+                if len(cleaned) > 3:
+
+                    save_task(
+                        cleaned,
+                        "Medium",
+                        "Pending",
+                        "Auto-generated from card analysis"
+                    )
+
+            st.success("Tasks automatically added to Task Manager.")
