@@ -197,6 +197,34 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
+    if st.button("Generate Today's Mission"):
+        mission_prompt = """
+Create a daily mission plan for Broke Dad Trading Co.
+
+Focus on:
+- making money
+- scanning cards
+- grading candidates
+- listing cards
+- finding deals
+- creating content
+- growing the business
+
+Return 5 clear tasks with priority levels.
+"""
+
+        mission = ask_cletus("Task Manager", mission_prompt)
+
+        st.write("### Today's Cletus Mission")
+        st.write(mission)
+
+        save_task("Generated Daily Mission", "High", "Pending", mission)
+        save_scan("Task Manager", mission_prompt, mission)
+
+        st.success("Today's mission saved to tasks.")
+
+    st.divider()
+
 st.subheader("What are we working on today?")
 
 col1, col2, col3 = st.columns(3)
