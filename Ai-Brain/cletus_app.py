@@ -385,7 +385,7 @@ for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
-question = st.chat_input("Ask Cletus...")
+question = st.chat_input("Ask Cletus...", key="main_chat_input")
 
 if question or image_file:
             user_text = question or "Analyze this card photo."
