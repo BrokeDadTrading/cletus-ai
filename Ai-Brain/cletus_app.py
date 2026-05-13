@@ -8,7 +8,7 @@ st.title("Cletus - Broke Dad Trading Co.")
 st.write("Sports Card AI Assistant")
 
 question = st.text_input("Ask Cletus")
-uploaded_file = st.file_uploader("Upload a card photo", type=["jpg", "jpeg", "png"])
+uploaded_file = st.camera_input("Take a photo of your card")
 
 if st.button("Ask Cletus"):
     messages = [
