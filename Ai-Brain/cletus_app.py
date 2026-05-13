@@ -365,7 +365,7 @@ else:
         st.session_state.messages.append({"role": "assistant", "content": answer})
         save_scan(mode, user_text, answer)
 
-use_camera = st.toggle("Use Camera", value=False)
+use_camera = st.toggle("Use Camera", value=False, key="main_camera_toggle")
 
 camera_photo = None
 
