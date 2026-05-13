@@ -1,8 +1,24 @@
 import streamlit as st
 from openai import OpenAI
 import base64
+from datetime import datetime
+import csv
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+SCAN_HISTORY_FILE = "Inventory/scan_history.csv"
+
+def save_scan(question, answer):
+    with open(SCAN_HISTORY_FILE, "a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            question,
+            answer
+        ])
+
+
+
 
 st.title("Cletus - Broke Dad Trading Co.")
 st.write("Sports Card AI Assistant")
@@ -81,3 +97,5 @@ Be honest if you cannot fully identify the card from the image.
 
     st.write("### Cletus Says:")
     st.write(answer)
+    save_scan(question, answer)
+st.success("Scan saved to Cletus history.")
