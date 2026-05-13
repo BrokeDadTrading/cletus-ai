@@ -5,46 +5,81 @@ from datetime import datetime
 import csv
 from PIL import Image
 import io
+import os
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 SCAN_HISTORY_FILE = "Inventory/scan_history.csv"
+INVENTORY_FILE = "Inventory/cards_inventory.csv"
 
-def save_scan(question, answer):
+os.makedirs("Inventory", exist_ok=True)
+
+def save_scan(mode, question, answer):
     with open(SCAN_HISTORY_FILE, "a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
         writer.writerow([
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            mode,
             question,
             answer
         ])
 
-st.title("Cletus - Broke Dad Trading Co.")
-st.write("Sports Card AI Assistant")
+def save_inventory(card_name, category, purchase_price, estimated_value, action, notes):
+    file_exists = os.path.exists(INVENTORY_FILE)
 
-question = st.text_input("Ask Cletus")
+    with open(INVENTORY_FILE, "a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
 
-use_camera = st.toggle("Use Camera")
+        if not file_exists:
+            writer.writerow([
+                "Date",
+                "Card Name",
+                "Category",
+                "Purchase Price",
+                "Estimated Value",
+                "Best Action",
+                "Notes"
+            ])
 
-camera_photo = None
+        writer.writerow([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            card_name,
+            category,
+            purchase_price,
+            estimated_value,
+            action,
+            notes
+        ])
 
-if use_camera:
-    camera_photo = st.camera_input("Take a photo of your card")
+def optimize_image(file):
+    image = Image.open(file)
+    width, height = image.size
 
-uploaded_file = st.file_uploader(
-    "Or upload a card photo",
-    type=["jpg", "jpeg", "png"]
-)
+    max_size = (1024, 1024)
+    image.thumbnail(max_size)
 
-if st.button("Ask Cletus"):
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG", quality=70)
 
-    messages = [
-        {
-            "role": "system",
-            "content": """
-You are Cletus, an AI assistant for sports cards and Pokemon cards.
+    return buffer.getvalue(), width, height, image.size[0], image.size[1]
 
-When a user uploads or takes a card photo, respond in this exact format:
+def ask_cletus(mode, question, image_file=None):
+    system_prompt = f"""
+You are Cletus, an AI business assistant for Broke Dad Trading Co.
+
+You specialize in:
+- Sports cards
+- Pokemon cards
+- Grading decisions
+- Buy/sell/hold recommendations
+- Profit calculations
+- Listing titles
+- Inventory advice
+- Business growth
+
+Current mode: {mode}
+
+If analyzing a card photo, respond in this format:
 
 CARD ANALYSIS
 1. Card Identification:
@@ -61,29 +96,16 @@ CARD ANALYSIS
 12. Suggested Listing Title:
 13. Final Recommendation:
 
-Be honest if you cannot fully identify the card from the image.
+If you are not sure, say what is unclear and what photo/detail is needed.
 """
-        }
-    ]
 
-    if camera_photo or uploaded_file:
-        if camera_photo:
-            image = Image.open(camera_photo)
-        else:
-            image = Image.open(uploaded_file)
+    messages = [{"role": "system", "content": system_prompt}]
 
-        width, height = image.size
-        st.info(f"Original image resolution: {width} x {height} pixels")
+    if image_file:
+        image_bytes, old_w, old_h, new_w, new_h = optimize_image(image_file)
 
-        max_size = (1024, 1024)
-        image.thumbnail(max_size)
-
-        buffer = io.BytesIO()
-        image.save(buffer, format="JPEG", quality=70)
-        image_bytes = buffer.getvalue()
-
-        new_width, new_height = image.size
-        st.info(f"Optimized image resolution: {new_width} x {new_height} pixels")
+        st.info(f"Original image: {old_w} x {old_h}")
+        st.info(f"Optimized image: {new_w} x {new_h}")
 
         image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
@@ -100,20 +122,132 @@ Be honest if you cannot fully identify the card from the image.
             ]
         })
     else:
-        messages.append({
-            "role": "user",
-            "content": question
-        })
+        messages.append({"role": "user", "content": question})
 
     response = client.chat.completions.create(
         model="gpt-4.1-mini",
         messages=messages
     )
 
-    answer = response.choices[0].message.content
+    return response.choices[0].message.content
 
-    st.write("### Cletus Says:")
-    st.write(answer)
+st.set_page_config(
+    page_title="Cletus AI",
+    page_icon="🤖",
+    layout="wide"
+)
 
-    save_scan(question, answer)
-    st.success("Scan saved to Cletus history.")
+st.title("🤖 Cletus AI")
+st.subheader("Broke Dad Trading Co. Sports Card Assistant")
+
+mode = st.sidebar.selectbox(
+    "Choose Cletus Mode",
+    [
+        "Analyze Card",
+        "Grade Check",
+        "Profit Calculator",
+        "Listing Writer",
+        "Inventory Assistant",
+        "Deal Finder",
+        "Business Coach"
+    ]
+)
+
+st.sidebar.write("### Cletus Tools")
+st.sidebar.write("📸 Card Scanner")
+st.sidebar.write("💰 Profit Calculator")
+st.sidebar.write("📝 Listing Writer")
+st.sidebar.write("📦 Inventory Helper")
+st.sidebar.write("🔎 Deal Finder")
+
+if mode == "Profit Calculator":
+    st.header("💰 Profit Calculator")
+
+    sale_price = st.number_input("Sale Price", min_value=0.0, step=1.0)
+    purchase_price = st.number_input("Purchase Price", min_value=0.0, step=1.0)
+    fees = st.number_input("Platform Fees", min_value=0.0, step=1.0)
+    shipping = st.number_input("Shipping Cost", min_value=0.0, step=1.0)
+
+    if st.button("Calculate Profit"):
+        profit = sale_price - purchase_price - fees - shipping
+
+        if purchase_price > 0:
+            roi = (profit / purchase_price) * 100
+        else:
+            roi = 0
+
+        st.success(f"Profit: ${profit:.2f}")
+        st.success(f"ROI: {roi:.1f}%")
+
+        if profit > 0:
+            st.write("Cletus says: This deal is profitable.")
+        else:
+            st.write("Cletus says: This deal is not profitable.")
+
+elif mode == "Inventory Assistant":
+    st.header("📦 Inventory Assistant")
+
+    card_name = st.text_input("Card Name")
+    category = st.selectbox("Category", ["Sports", "Pokemon", "Other"])
+    purchase_price = st.number_input("Purchase Price", min_value=0.0, step=1.0)
+    estimated_value = st.number_input("Estimated Value", min_value=0.0, step=1.0)
+    action = st.selectbox("Best Action", ["Hold", "Sell Raw", "Grade", "Pass"])
+    notes = st.text_area("Notes")
+
+    if st.button("Save To Inventory"):
+        save_inventory(card_name, category, purchase_price, estimated_value, action, notes)
+        st.success("Card saved to inventory.")
+
+elif mode == "Listing Writer":
+    st.header("📝 Listing Writer")
+
+    card_info = st.text_area("Enter card details")
+    platform = st.selectbox("Platform", ["eBay", "Whatnot", "Fanatics Live", "Facebook", "Instagram"])
+
+    if st.button("Create Listing"):
+        prompt = f"""
+Create a strong listing for this card.
+
+Platform: {platform}
+Card Details: {card_info}
+
+Return:
+1. SEO title
+2. Short description
+3. Long description
+4. Hashtags
+5. Suggested starting price strategy
+"""
+
+        answer = ask_cletus(mode, prompt)
+        st.write("### Cletus Says:")
+        st.write(answer)
+        save_scan(mode, prompt, answer)
+
+else:
+    st.header(f"Mode: {mode}")
+
+    question = st.text_input("Ask Cletus")
+
+    use_camera = st.toggle("Use Camera")
+
+    camera_photo = None
+
+    if use_camera:
+        camera_photo = st.camera_input("Take a photo of your card")
+
+    uploaded_file = st.file_uploader(
+        "Or upload a card photo",
+        type=["jpg", "jpeg", "png"]
+    )
+
+    image_file = camera_photo if camera_photo else uploaded_file
+
+    if st.button("Ask Cletus"):
+        answer = ask_cletus(mode, question, image_file)
+
+        st.write("### Cletus Says:")
+        st.write(answer)
+
+        save_scan(mode, question, answer)
+        st.success("Saved to Cletus history.")
