@@ -9,10 +9,22 @@ import os
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
+os.makedirs("Inventory", exist_ok=True)
+
 SCAN_HISTORY_FILE = "Inventory/scan_history.csv"
 INVENTORY_FILE = "Inventory/cards_inventory.csv"
 
-os.makedirs("Inventory", exist_ok=True)
+st.set_page_config(
+    page_title="Cletus AI",
+    page_icon="🤖",
+    layout="wide"
+)
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "growth_goal" not in st.session_state:
+    st.session_state.growth_goal = "Build Broke Dad Trading Co. into a profitable sports card business."
 
 def save_scan(mode, question, answer):
     with open(SCAN_HISTORY_FILE, "a", newline="", encoding="utf-8") as file:
@@ -24,36 +36,9 @@ def save_scan(mode, question, answer):
             answer
         ])
 
-def save_inventory(card_name, category, purchase_price, estimated_value, action, notes):
-    file_exists = os.path.exists(INVENTORY_FILE)
-
-    with open(INVENTORY_FILE, "a", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-
-        if not file_exists:
-            writer.writerow([
-                "Date",
-                "Card Name",
-                "Category",
-                "Purchase Price",
-                "Estimated Value",
-                "Best Action",
-                "Notes"
-            ])
-
-        writer.writerow([
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            card_name,
-            category,
-            purchase_price,
-            estimated_value,
-            action,
-            notes
-        ])
-
 def optimize_image(file):
     image = Image.open(file)
-    width, height = image.size
+    old_w, old_h = image.size
 
     max_size = (1024, 1024)
     image.thumbnail(max_size)
@@ -61,25 +46,32 @@ def optimize_image(file):
     buffer = io.BytesIO()
     image.save(buffer, format="JPEG", quality=70)
 
-    return buffer.getvalue(), width, height, image.size[0], image.size[1]
+    return buffer.getvalue(), old_w, old_h, image.size[0], image.size[1]
 
 def ask_cletus(mode, question, image_file=None):
     system_prompt = f"""
-You are Cletus, an AI business assistant for Broke Dad Trading Co.
+You are Cletus, the AI growth assistant for Broke Dad Trading Co.
 
-You specialize in:
-- Sports cards
-- Pokemon cards
-- Grading decisions
-- Buy/sell/hold recommendations
-- Profit calculations
-- Listing titles
-- Inventory advice
-- Business growth
+Personality:
+- Helpful
+- Honest
+- Business-minded
+- Direct
+- Motivational
+- Always focused on helping the user grow safely and profitably
 
-Current mode: {mode}
+Your mission:
+Help the user build a profitable sports card and Pokemon card business.
 
-If analyzing a card photo, respond in this format:
+Current user goal:
+{st.session_state.growth_goal}
+
+Current mode:
+{mode}
+
+Cletus should act like a growing business assistant, not just a chatbot.
+
+When analyzing cards, use this format:
 
 CARD ANALYSIS
 1. Card Identification:
@@ -96,10 +88,20 @@ CARD ANALYSIS
 12. Suggested Listing Title:
 13. Final Recommendation:
 
-If you are not sure, say what is unclear and what photo/detail is needed.
+When giving business advice, include:
+- Immediate next step
+- Risk
+- Income potential
+- What Cletus would do next
 """
 
     messages = [{"role": "system", "content": system_prompt}]
+
+    for msg in st.session_state.messages[-8:]:
+        messages.append({
+            "role": msg["role"],
+            "content": msg["content"]
+        })
 
     if image_file:
         image_bytes, old_w, old_h, new_w, new_h = optimize_image(image_file)
@@ -131,34 +133,66 @@ If you are not sure, say what is unclear and what photo/detail is needed.
 
     return response.choices[0].message.content
 
-st.set_page_config(
-    page_title="Cletus AI",
-    page_icon="🤖",
-    layout="wide"
-)
-
 st.title("🤖 Cletus AI")
-st.subheader("Broke Dad Trading Co. Sports Card Assistant")
+st.caption("Broke Dad Trading Co. Sports Card Growth Assistant")
 
-mode = st.sidebar.selectbox(
-    "Choose Cletus Mode",
-    [
-        "Analyze Card",
-        "Grade Check",
-        "Profit Calculator",
-        "Listing Writer",
-        "Inventory Assistant",
-        "Deal Finder",
-        "Business Coach"
-    ]
-)
+with st.sidebar:
+    st.header("Cletus Command Center")
 
-st.sidebar.write("### Cletus Tools")
-st.sidebar.write("📸 Card Scanner")
-st.sidebar.write("💰 Profit Calculator")
-st.sidebar.write("📝 Listing Writer")
-st.sidebar.write("📦 Inventory Helper")
-st.sidebar.write("🔎 Deal Finder")
+    mode = st.selectbox(
+        "Choose Mode",
+        [
+            "General Chat",
+            "Analyze Card",
+            "Grade Check",
+            "Profit Calculator",
+            "Listing Writer",
+            "Inventory Assistant",
+            "Deal Finder",
+            "Manager Review",
+            "Business Growth"
+        ]
+    )
+
+    st.write("### Growth Goal")
+    st.session_state.growth_goal = st.text_area(
+        "What is Cletus helping you build?",
+        value=st.session_state.growth_goal
+    )
+
+    if st.button("Clear Chat"):
+        st.session_state.messages = []
+        st.rerun()
+
+st.subheader("What are we working on today?")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    if st.button("📸 Analyze a Card"):
+        mode = "Analyze Card"
+        st.session_state.messages.append({
+            "role": "user",
+            "content": "Help me analyze a card photo and decide whether to grade, sell, hold, or pass."
+        })
+
+with col2:
+    if st.button("💰 Check Profit"):
+        mode = "Profit Calculator"
+        st.session_state.messages.append({
+            "role": "user",
+            "content": "Help me calculate profit and ROI on a card deal."
+        })
+
+with col3:
+    if st.button("🚀 Grow Business"):
+        mode = "Business Growth"
+        st.session_state.messages.append({
+            "role": "user",
+            "content": "Give me the next best move to grow Broke Dad Trading Co."
+        })
+
+st.divider()
 
 if mode == "Profit Calculator":
     st.header("💰 Profit Calculator")
@@ -168,68 +202,25 @@ if mode == "Profit Calculator":
     fees = st.number_input("Platform Fees", min_value=0.0, step=1.0)
     shipping = st.number_input("Shipping Cost", min_value=0.0, step=1.0)
 
-    if st.button("Calculate Profit"):
+    if st.button("Calculate"):
         profit = sale_price - purchase_price - fees - shipping
+        roi = (profit / purchase_price) * 100 if purchase_price > 0 else 0
 
-        if purchase_price > 0:
-            roi = (profit / purchase_price) * 100
-        else:
-            roi = 0
+        result = f"""
+Profit: ${profit:.2f}
+ROI: {roi:.1f}%
 
-        st.success(f"Profit: ${profit:.2f}")
-        st.success(f"ROI: {roi:.1f}%")
-
-        if profit > 0:
-            st.write("Cletus says: This deal is profitable.")
-        else:
-            st.write("Cletus says: This deal is not profitable.")
-
-elif mode == "Inventory Assistant":
-    st.header("📦 Inventory Assistant")
-
-    card_name = st.text_input("Card Name")
-    category = st.selectbox("Category", ["Sports", "Pokemon", "Other"])
-    purchase_price = st.number_input("Purchase Price", min_value=0.0, step=1.0)
-    estimated_value = st.number_input("Estimated Value", min_value=0.0, step=1.0)
-    action = st.selectbox("Best Action", ["Hold", "Sell Raw", "Grade", "Pass"])
-    notes = st.text_area("Notes")
-
-    if st.button("Save To Inventory"):
-        save_inventory(card_name, category, purchase_price, estimated_value, action, notes)
-        st.success("Card saved to inventory.")
-
-elif mode == "Listing Writer":
-    st.header("📝 Listing Writer")
-
-    card_info = st.text_area("Enter card details")
-    platform = st.selectbox("Platform", ["eBay", "Whatnot", "Fanatics Live", "Facebook", "Instagram"])
-
-    if st.button("Create Listing"):
-        prompt = f"""
-Create a strong listing for this card.
-
-Platform: {platform}
-Card Details: {card_info}
-
-Return:
-1. SEO title
-2. Short description
-3. Long description
-4. Hashtags
-5. Suggested starting price strategy
+Cletus Recommendation:
+{"This looks profitable." if profit > 0 else "This does not look profitable."}
 """
 
-        answer = ask_cletus(mode, prompt)
-        st.write("### Cletus Says:")
-        st.write(answer)
-        save_scan(mode, prompt, answer)
+        st.success(result)
+
+        st.session_state.messages.append({"role": "assistant", "content": result})
+        save_scan(mode, "Profit calculation", result)
 
 else:
-    st.header(f"Mode: {mode}")
-
-    question = st.text_input("Ask Cletus")
-
-    use_camera = st.toggle("Use Camera")
+    use_camera = st.toggle("Use Camera", value=False)
 
     camera_photo = None
 
@@ -243,11 +234,31 @@ else:
 
     image_file = camera_photo if camera_photo else uploaded_file
 
-    if st.button("Ask Cletus"):
-        answer = ask_cletus(mode, question, image_file)
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
-        st.write("### Cletus Says:")
-        st.write(answer)
+    question = st.chat_input("Ask Cletus...")
 
-        save_scan(mode, question, answer)
-        st.success("Saved to Cletus history.")
+    if question or image_file:
+        user_text = question or "Analyze this card photo."
+
+        st.session_state.messages.append({
+            "role": "user",
+            "content": user_text
+        })
+
+        with st.chat_message("user"):
+            st.write(user_text)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Cletus is thinking..."):
+                answer = ask_cletus(mode, user_text, image_file)
+                st.write(answer)
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": answer
+        })
+
+        save_scan(mode, user_text, answer)
