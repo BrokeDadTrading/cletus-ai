@@ -11,6 +11,8 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 os.makedirs("Inventory", exist_ok=True)
 
+TASKS_FILE = "Inventory/tasks.csv"
+
 SCAN_HISTORY_FILE = "Inventory/scan_history.csv"
 INVENTORY_FILE = "Inventory/cards_inventory.csv"
 
@@ -35,6 +37,36 @@ def save_scan(mode, question, answer):
             question,
             answer
         ])
+
+def save_task(task, priority, status, notes):
+
+    with open(TASKS_FILE, "a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+
+        writer.writerow([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            task,
+            priority,
+            status,
+            notes
+        ])
+
+def load_tasks():
+
+    tasks = []
+
+    if os.path.exists(TASKS_FILE):
+
+        with open(TASKS_FILE, "r", encoding="utf-8") as file:
+            reader = csv.reader(file)
+
+            next(reader, None)
+
+            for row in reader:
+                tasks.append(row)
+
+    return tasks
+
 
 def optimize_image(file):
     image = Image.open(file)
@@ -144,6 +176,7 @@ with st.sidebar:
         [
             "General Chat",
             "Analyze Card",
+            "Task Manager",
             "Grade Check",
             "Profit Calculator",
             "Listing Writer",
@@ -194,7 +227,35 @@ with col3:
 
 st.divider()
 
-if mode == "Profit Calculator":
+if mode == "Task Manager":
+
+    st.header("📋 Cletus Task Manager")
+
+    task = st.text_input("Task")
+    priority = st.selectbox("Priority", ["Low", "Medium", "High", "Critical"])
+    status = st.selectbox("Status", ["Pending", "In Progress", "Completed"])
+    notes = st.text_area("Notes")
+
+    if st.button("Save Task"):
+        save_task(task, priority, status, notes)
+        st.success("Task saved.")
+
+    st.divider()
+    st.subheader("Current Tasks")
+
+    tasks = load_tasks()
+
+    for row in tasks:
+        if len(row) >= 5:
+            st.write(f"""
+**Task:** {row[1]}  
+**Priority:** {row[2]}  
+**Status:** {row[3]}  
+**Notes:** {row[4]}  
+---
+""")
+
+elif mode == "Profit Calculator":
     st.header("💰 Profit Calculator")
 
     sale_price = st.number_input("Sale Price", min_value=0.0, step=1.0)
