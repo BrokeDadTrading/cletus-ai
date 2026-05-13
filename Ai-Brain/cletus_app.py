@@ -25,7 +25,12 @@ st.write("Sports Card AI Assistant")
 
 question = st.text_input("Ask Cletus")
 
-camera_photo = st.camera_input("Take a photo of your card")
+use_camera = st.toggle("Use Camera")
+
+camera_photo = None
+
+if use_camera:
+    camera_photo = st.camera_input("Take a photo of your card")
 
 uploaded_file = st.file_uploader(
     "Or upload a card photo",
