@@ -381,7 +381,9 @@ def load_inventory():
                 inventory.append(row)
 
     return inventory
+
 elif mode == "Profit Calculator":
+
     st.header("💰 Profit Calculator")
 
     sale_price = st.number_input("Sale Price", min_value=0.0, step=1.0)
@@ -402,11 +404,11 @@ Cletus Recommendation:
 """
 
         st.success(result)
-
         st.session_state.messages.append({"role": "assistant", "content": result})
         save_scan(mode, "Profit calculation", result)
 
 else:
+
     use_camera = st.toggle("Use Camera", value=False)
 
     camera_photo = None
