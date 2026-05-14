@@ -7,6 +7,8 @@ import base64
 from io import BytesIO
 import cv2
 import numpy as np
+from streamlit_mic_recorder import mic_recorder
+
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -234,6 +236,9 @@ if st.button("🔍 Run Cletus Grading Review", use_container_width=True):
         with st.spinner("Cletus is inspecting centering, corners, edges, and surface..."):
 
             prompt = question if question else f"""
+
+
+            
 You are Cletus AI, a practical trading card grading assistant.
 
 Use a {grade_style} evaluation style.
@@ -270,3 +275,78 @@ Be honest. Do not guarantee a grade.
 
             st.subheader("🧾 Cletus Evaluation")
             st.write(response.output_text)
+
+            st.divider()
+st.header("💬 Talk/Text With Cletus")
+
+CHAT_MEMORY_FILE = "cletus_chat_memory.txt"
+
+def load_chat_memory():
+    if os.path.exists(CHAT_MEMORY_FILE):
+        with open(CHAT_MEMORY_FILE, "r", encoding="utf-8") as f:
+            return f.read()
+    return ""
+
+def save_chat_memory(user_msg, cletus_msg):
+    with open(CHAT_MEMORY_FILE, "a", encoding="utf-8") as f:
+        f.write(f"\nUser: {user_msg}\nCletus: {cletus_msg}\n")
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+st.subheader("Type to Cletus")
+
+user_message = st.chat_input("Ask Cletus anything...")
+
+st.subheader("Or talk to Cletus")
+
+audio = mic_recorder(
+    start_prompt="🎙️ Start Recording",
+    stop_prompt="⏹️ Stop Recording",
+    just_once=True,
+    use_container_width=True
+)
+
+if audio:
+    audio_bytes = audio["bytes"]
+
+    with open("voice_input.wav", "wb") as f:
+        f.write(audio_bytes)
+
+    with open("voice_input.wav", "rb") as audio_file:
+        transcript = client.audio.transcriptions.create(
+            model="gpt-4o-mini-transcribe",
+            file=audio_file
+        )
+
+    user_message = transcript.text
+    st.success(f"You said: {user_message}")
+
+if user_message:
+    saved_memory = load_chat_memory()
+
+    st.session_state.chat_history.append({"role": "user", "content": user_message})
+
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=f"""
+You are Cletus AI, a helpful trading card assistant for BroKe Dad Trading Co.
+
+Use this saved memory when helpful:
+{saved_memory}
+
+User message:
+{user_message}
+
+Answer naturally like a helpful assistant.
+"""
+    )
+
+    cletus_reply = response.output_text
+
+    st.session_state.chat_history.append({"role": "assistant", "content": cletus_reply})
+    save_chat_memory(user_message, cletus_reply)
+
+for message in st.session_state.chat_history:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
