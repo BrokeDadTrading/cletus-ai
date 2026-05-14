@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 from PIL import Image
 from streamlit_cropper import st_cropper
-
+from PIL import Image
 
 
 MEMORY_FILE = "data/memory.txt"
