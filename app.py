@@ -45,9 +45,6 @@ if photo:
 
     st.success("Photo loaded in full resolution.")
     
-
-    st.image(cropped_image, caption="Cropped Card Image", use_container_width=True)
-
     cropped_image.save("data/latest_card_crop.png")
 
     st.success("Cropped high-resolution image saved.")
