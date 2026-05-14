@@ -27,26 +27,24 @@ photo_option = st.radio(
 
 image_file = None
 
-if photo_option == "Upload Photo":
-    image_file = st.file_uploader(
-        "Upload a high-resolution card photo",
-        type=["jpg", "jpeg", "png"]
-    )
+from PIL import Image
 
-if photo_option == "Take Photo":
-    image_file = st.camera_input("Take a card photo")
+st.subheader("📸 High-Resolution Card Photo")
 
-if image_file:
-    image = Image.open(image_file)
+photo = st.file_uploader(
+    "Upload or take a high-resolution card photo",
+    type=["jpg", "jpeg", "png"],
+    help="On your phone, tap Upload, then choose Camera for best quality, zoom, and focus."
+)
 
-    st.write("Crop the card below:")
+image = None
 
-    cropped_image = st_cropper(
-        image,
-        realtime_update=True,
-        box_color="#00FF00",
-        aspect_ratio=None
-    )
+if photo:
+    image = Image.open(photo)
+    st.image(image, caption="Original high-resolution image", use_container_width=True)
+
+    st.success("Photo loaded in full resolution.")
+    
 
     st.image(cropped_image, caption="Cropped Card Image", use_container_width=True)
 
