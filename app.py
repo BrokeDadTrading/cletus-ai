@@ -51,44 +51,28 @@ if photo:
 question = st.text_input("Ask Cletus something")
 
 if st.button("Run Cletus"):
+    if image is None:
+        st.warning("Please upload a card photo first.")
+    else:
+        st.write("Cletus is evaluating your card photo...")
 
-    # Read memory file
-    try:
-        with open(MEMORY_FILE, "r", encoding="utf-8") as file:
-            memory = file.read()
-    except:
-        memory = ""
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": "Evaluate this trading card photo. Look at centering, corners, edges, surface, print quality, and give an estimated grade range. Be clear and practical."
+                        },
+                        {
+                            "type": "input_image",
+                            "image_url": image
+                        }
+                    ]
+                }
+            ]
+        )
 
-    # Send to OpenAI
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": f"""
-                You are Cletus AI.
-
-                Here is your long-term memory:
-                {memory}
-
-                Use this memory to help the user.
-                """
-            },
-            {
-                "role": "user",
-                "content": question
-            }
-        ]
-    )
-
-    answer = response.choices[0].message.content
-
-    # Save conversation into memory
-    with open(MEMORY_FILE, "a", encoding="utf-8") as file:
-        file.write(f"\nUSER: {question}\n")
-        file.write(f"CLETUS: {answer}\n")
-
-    # Show only newest response
-    st.write(answer)
-
-   
+        st.write(response.output_text)
